@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CampusSOS — Autonomous Grievance & Accountability System</title>
+  <meta name="description" content="CampusSOS is an autonomous multi-agent system that intakes, classifies, routes, monitors, and escalates campus grievances without human intervention." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <!-- Topbar injected by JS -->
+    <header class="topbar" id="topbar"></header>
+
+    <!-- Main content area — pages render here -->
+    <main id="page-content" class="page-content"></main>
+  </div>
+
+  <!-- Modal overlay -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-box" id="modal-box"></div>
+  </div>
+
+  <!-- Toast container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script type="module" src="js/main.js?v=2.1"></script>
+</body>
+</html>
