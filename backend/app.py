@@ -95,6 +95,70 @@ def create_app():
             'message': 'Database reset with deterministic demo scenario tickets, departments, and staff.'
         })
 
+    # ── AUTHENTICATION API ───────────────────────────────────────
+    @app.route('/api/auth/login', methods=['POST'])
+    def auth_login():
+        """Authenticate user against dummy/fixed credentials."""
+        data = request.get_json() or {}
+        username = (data.get('username') or '').strip().lower()
+        password = (data.get('password') or '').strip()
+        requested_portal = (data.get('portal') or data.get('role') or '').strip().lower()
+
+        if not username or not password:
+            return jsonify({'error': 'Username and password are required.'}), 400
+
+        conn = get_db_connection()
+        user_row = conn.execute('''
+            SELECT u.*, s.name as staff_name, s.role as staff_role, d.name as department_name
+            FROM users u
+            LEFT JOIN staff s ON u.staff_id = s.id
+            LEFT JOIN departments d ON u.department_id = d.id
+            WHERE LOWER(u.username) = ?
+        ''', (username,)).fetchone()
+        conn.close()
+
+        if not user_row or user_row['password'] != password:
+            return jsonify({'error': 'Invalid username or password.'}), 401
+
+        user = dict(user_row)
+        user.pop('password', None)
+
+        # Check if portal matches (if requested)
+        role = user['role'] # 'student' | 'faculty' | 'admin'
+        if requested_portal:
+            if requested_portal in ('staff', 'faculty') and role != 'faculty':
+                return jsonify({'error': f"Access denied. '{username}' is a {role.capitalize()} account and cannot log into the Staff Portal."}), 403
+            elif requested_portal == 'student' and role != 'student':
+                return jsonify({'error': f"Access denied. '{username}' is a {role.capitalize()} account and cannot log into the Student Portal."}), 403
+            elif requested_portal == 'admin' and role != 'admin':
+                return jsonify({'error': f"Access denied. '{username}' is a {role.capitalize()} account and cannot log into the Admin Dashboard."}), 403
+
+        return jsonify({
+            'success': True,
+            'user': user,
+            'message': f"Welcome back, {user['name']}!"
+        })
+
+    @app.route('/api/auth/demo-accounts', methods=['GET'])
+    def get_demo_accounts():
+        """Get fixed sample accounts metadata for quick demonstration login buttons."""
+        return jsonify({
+            'student': [
+                {'username': 'student', 'password': 'student123', 'name': 'Student #101', 'role': 'student', 'id': 'USR_STU_01'},
+                {'username': 'student2', 'password': 'student123', 'name': 'Student #102', 'role': 'student', 'id': 'USR_STU_02'},
+                {'username': 'student3', 'password': 'student123', 'name': 'Student #103', 'role': 'student', 'id': 'USR_STU_03'},
+            ],
+            'staff': [
+                {'username': 'electrician', 'password': 'staff123', 'name': 'Campus Electrician', 'role': 'faculty', 'id': 'USR_FAC_01'},
+                {'username': 'network', 'password': 'staff123', 'name': 'Network Engineer', 'role': 'faculty', 'id': 'USR_FAC_03'},
+                {'username': 'viceprincipal', 'password': 'staff123', 'name': 'Vice Principal', 'role': 'faculty', 'id': 'USR_FAC_04'},
+                {'username': 'grievance', 'password': 'staff123', 'name': 'Grievance Redressal Officer', 'role': 'faculty', 'id': 'USR_FAC_05'},
+            ],
+            'admin': [
+                {'username': 'admin', 'password': 'admin123', 'name': 'Dean of Student Welfare (Admin)', 'role': 'admin', 'id': 'USR_ADM_01'}
+            ]
+        })
+
     # ── TICKETS API ──────────────────────────────────────────────
     @app.route('/api/tickets', methods=['POST'])
     def create_complaint_ticket():
@@ -103,7 +167,7 @@ def create_app():
         text = (data.get('complaint_text') or data.get('text') or '').strip()
         student_name = (data.get('student_name') or data.get('name') or 'Anonymous Student').strip()
         location = (data.get('location') or 'Campus').strip()
-        student_id = (data.get('student_id') or 'STU-DEMO').strip()
+        student_id = (data.get('student_id') or 'USR_STU_01').strip()
 
         if not text:
             return jsonify({'error': 'Complaint text is required.'}), 400

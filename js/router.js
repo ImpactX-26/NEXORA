@@ -36,11 +36,42 @@ export function getParam(pattern, hash) {
   return params;
 }
 
+import { isAuthenticated, getAuthUser, getUserRole } from './state.js';
+import { showToast } from './utils.js';
+
 /** Initialize router */
 export function initRouter() {
   const handleRoute = () => {
-    const hash = currentRoute();
+    let hash = currentRoute();
     const content = document.getElementById('page-content');
+    const authed = isAuthenticated();
+    const role = getUserRole();
+
+    // 1. Auth Guard: if not authenticated, redirect all protected pages to /login
+    if (!authed && hash !== '/login') {
+      navigate('/login');
+      return;
+    }
+
+    // 2. If authenticated and trying to visit /login, redirect to their home portal
+    if (authed && hash === '/login') {
+      navigate(`/${role || 'student'}`);
+      return;
+    }
+
+    // 3. Role-Based Access Control Guard
+    if (authed) {
+      if (role === 'student' && (hash.startsWith('/faculty') || hash.startsWith('/admin'))) {
+        showToast('Access Denied: Students cannot access staff or administrator dashboards.', 'error');
+        navigate('/student');
+        return;
+      }
+      if (role === 'faculty' && hash.startsWith('/admin')) {
+        showToast('Access Denied: Staff accounts do not have administrator permissions.', 'error');
+        navigate('/faculty');
+        return;
+      }
+    }
 
     // Clean up previous page
     if (currentCleanup && typeof currentCleanup === 'function') {
@@ -66,16 +97,24 @@ export function initRouter() {
     }
 
     if (!matched) {
-      // Default: redirect to student portal
-      navigate('/student');
+      // Default fallback
+      if (authed) {
+        navigate(`/${role || 'student'}`);
+      } else {
+        navigate('/login');
+      }
     }
   };
 
   window.addEventListener('hashchange', handleRoute);
 
-  // Initial route
+  // Initial route check
   if (!window.location.hash) {
-    window.location.hash = '/student';
+    if (isAuthenticated()) {
+      window.location.hash = `/${getUserRole() || 'student'}`;
+    } else {
+      window.location.hash = '/login';
+    }
   } else {
     handleRoute();
   }

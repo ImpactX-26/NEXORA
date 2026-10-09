@@ -6,13 +6,9 @@ from backend.config import Config
 # Supported standard categories
 VALID_CATEGORIES = [
     'electrical',
-    'plumbing',
-    'mess',
     'wifi',
-    'academic',
-    'timetable',
-    'security',
-    'hostel',
+    'bullying_crime',
+    'grievance_redressal',
     'other'
 ]
 
@@ -32,40 +28,45 @@ def _fallback_intake(text: str, reason: str = 'LLM unavailable') -> dict:
     lower = text.lower()
     
     category = 'other'
-    if any(k in lower for k in ['spark', 'shock', 'plug', 'switch', 'light', 'fan', 'ac', 'power', 'socket', 'wire', 'fuse', 'electric']):
+    # 1. Check bullying, ragging, physical assault, extortion, violence, campus discipline (Vice Principal)
+    if any(k in lower for k in ['bully', 'bullied', 'bullying', 'ragging', 'ragged', 'threat', 'threaten', 'assault', 'violence', 'extort', 'extortion', 'crime', 'stalk', 'stalking', 'fight', 'weapon', 'illegal']):
+        category = 'bullying_crime'
+    # 2. Check Grievance Redressal (Unfair treatment, academic problems, harassment, administrative failures, scholarship delays)
+    elif any(k in lower for k in ['unfair', 'bias', 'biased', 'harass', 'harassment', 'discrimination', 'scholarship', 'admin fail', 'administrative', 'evaluation', 'dispute', 'marks deduction', 'grade penalty', 'refused', 'arbitrary', 're-exam', 'attendance dispute', 'ombuds', 'complaint against', 'grievance', 'misconduct']):
+        category = 'grievance_redressal'
+    # 3. Check Electrical problems (Campus Electrician)
+    elif any(k in lower for k in ['spark', 'shock', 'plug', 'switch', 'light', 'fan', 'ac', 'power', 'socket', 'wire', 'wiring', 'fuse', 'electric', 'blackout', 'short circuit', 'breaker', 'voltage']):
         category = 'electrical'
-    elif any(k in lower for k in ['leak', 'water', 'tap', 'washroom', 'toilet', 'flush', 'sink', 'pipe', 'drain', 'plumb']):
-        category = 'plumbing'
-    elif any(k in lower for k in ['food', 'mess', 'dal', 'roti', 'rice', 'meal', 'dinner', 'lunch', 'breakfast', 'taste', 'smell', 'canteen']):
-        category = 'mess'
-    elif any(k in lower for k in ['wifi', 'internet', 'network', 'router', 'disconnect', 'bandwidth', 'ethernet', 'slow net', 'lan']):
+    # 4. Check WiFi & Network problems (Network Engineer)
+    elif any(k in lower for k in ['wifi', 'wi-fi', 'internet', 'network', 'router', 'disconnect', 'bandwidth', 'ethernet', 'slow net', 'lan', 'dns', 'gateway', 'port', 'connection drop']):
         category = 'wifi'
-    elif any(k in lower for k in ['timetable', 'clash', 'schedule', 'slot', 'same room', 'timing', 'lecture clash']):
-        category = 'timetable'
-    elif any(k in lower for k in ['exam', 'grade', 'marks', 'professor', 'faculty', 'assignment', 'course', 'credit', 'academic']):
-        category = 'academic'
-    elif any(k in lower for k in ['lock', 'theft', 'stolen', 'broken gate', 'security', 'guard', 'safety', 'harass', 'cctv']):
-        category = 'security'
-    elif any(k in lower for k in ['bed', 'room', 'hostel', 'warden', 'clean', 'dustbin', 'corridor', 'balcony', 'window']):
-        category = 'hostel'
         
     urgency = 'medium'
-    if any(k in lower for k in ['spark', 'shock', 'fire', 'severe', 'danger', 'hazard', 'emergency', 'flood', 'immediately', 'critical']):
-        urgency = 'critical' if 'fire' in lower or 'shock' in lower else 'high'
-    elif any(k in lower for k in ['off', 'second time', 'broken', 'no water', 'urgent', 'drop']):
+    is_high_priority_loc = any(k in lower for k in ['lab', 'labs', 'faculty room', 'staff room', 'server room', 'library', 'study hall', 'seminar hall', 'classroom', 'exam hall'])
+
+    if category == 'bullying_crime':
+        urgency = 'critical' if any(k in lower for k in ['threat', 'violence', 'assault', 'weapon', 'harm', 'hit', 'severe', 'ragging']) else 'high'
+    elif any(k in lower for k in ['spark', 'shock', 'fire', 'severe', 'danger', 'hazard', 'emergency', 'blackout', 'immediately', 'critical']):
+        urgency = 'critical' if ('fire' in lower or 'shock' in lower or 'spark' in lower) else 'high'
+    elif category in ['electrical', 'wifi'] and is_high_priority_loc:
         urgency = 'high'
-    elif any(k in lower for k in ['minor', 'slow', 'later', 'suggestion', 'request']):
+    elif category == 'grievance_redressal' and any(k in lower for k in ['harass', 'extort', 'threat', 'career', 'semester loss', 'expulsion', 'severe']):
+        urgency = 'high'
+    elif any(k in lower for k in ['broken', 'dropped', 'urgent', 'dispute', 'delay', 'failed']):
+        urgency = 'high'
+    elif any(k in lower for k in ['minor', 'slow', 'later', 'suggestion', 'request', 'query']):
         urgency = 'low'
         
     words = text.split()
     title = ' '.join(words[:6]).capitalize() if len(words) >= 3 else text[:40].capitalize()
     
+    loc_note = " (High-Priority Facility)" if is_high_priority_loc and category in ['electrical', 'wifi'] else ""
     return {
         'category': category,
         'urgency': urgency,
         'title': title,
         'summary': text[:120] + ('...' if len(text) > 120 else ''),
-        'reasoning': f"Rule-based classification fallback ({reason}): Identified category as '{category}' and urgency as '{urgency}'.",
+        'reasoning': f"Rule-based classification ({reason}): Identified category as '{category}' and urgency as '{urgency}'{loc_note}.",
         'is_fallback': True
     }
 
@@ -83,31 +84,30 @@ def analyze_complaint(complaint_text: str) -> dict:
         return _fallback_intake(complaint_text, "No valid GROQ_API_KEY configured")
 
     prompt = f"""You are the autonomous Intake Agent of CampusSOS, an institutional grievance & accountability system.
-Analyze the following student complaint and output structured JSON.
+Analyze the following student complaint and classify it into exactly one of the supported categories:
 
 Supported categories:
-- electrical
-- plumbing
-- mess
-- wifi
-- timetable
-- academic
-- security
-- hostel
-- other
+- electrical (electric problems: power cuts, sockets, sparking, wiring, lighting, voltage fluctuation, circuit breaker, fan/appliance power -> routed to Campus Electrician)
+- wifi (network issues: Wi-Fi connection drops, LAN/ethernet faults, router failure, slow bandwidth, DNS issues -> routed to Network Engineer)
+- bullying_crime (ragging, student intimidation, bullying, physical violence, threats, extortion, severe safety emergencies -> routed to Vice Principal)
+- grievance_redressal (serious issues regarding unfair treatment, evaluation disputes, harassment by staff/faculty, administrative failures, scholarship delays that regular staff failed to resolve -> routed to Grievance Redressal Officer)
+- other (unclassified issues -> routed to Grievance Redressal Officer)
 
 Supported urgency levels:
-- critical (immediate hazard, shock, fire risk, flooding)
-- high (active hindrance, e.g. spoiled food, no water, sparks)
-- medium (standard operational disruption, intermittent wifi, timetable clash)
-- low (minor aesthetic or suggestion)
+- critical (bullying/ragging threats, physical danger, crimes, shock, fire risk, severe violence, core server room failures)
+- high (active hazard, sparks, network/power blackout in labs/faculty rooms/staff rooms/library/server room, critical administrative deadline failure)
+- medium (standard operational disruption, intermittent wifi in general areas, socket repair)
+- low (minor aesthetic or routine query)
+
+Note on Priority Locations:
+For electrical or wifi issues in key facilities (labs, faculty room, staff room, server room, library, seminar hall), assign at least 'high' urgency due to high academic and operational impact.
 
 Student Complaint:
 \"\"\"{complaint_text.strip()}\"\"\"
 
 Output STRICT JSON only:
 {{
-  "category": "electrical|plumbing|mess|wifi|timetable|academic|security|hostel|other",
+  "category": "electrical|wifi|bullying_crime|grievance_redressal|other",
   "urgency": "low|medium|high|critical",
   "title": "Concise summary title (max 8 words)",
   "summary": "One sentence summary of the issue",
@@ -138,7 +138,15 @@ Output STRICT JSON only:
                 
                 # Validation
                 cat = data.get('category', '').lower().strip()
-                if cat not in VALID_CATEGORIES:
+                if cat in ['bullying', 'crime', 'ragging', 'ragging_crime', 'discipline']:
+                    cat = 'bullying_crime'
+                elif cat in ['network', 'internet', 'lan']:
+                    cat = 'wifi'
+                elif cat in ['electric', 'power', 'plugs']:
+                    cat = 'electrical'
+                elif cat in ['grievance', 'academic', 'harassment', 'administrative', 'admin']:
+                    cat = 'grievance_redressal'
+                elif cat not in VALID_CATEGORIES:
                     matched = next((c for c in VALID_CATEGORIES if c in cat), 'other')
                     cat = matched
                     

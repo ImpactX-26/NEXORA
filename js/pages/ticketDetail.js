@@ -5,7 +5,7 @@
 
 import {
   getTickets, getCurrentRole, getCurrentFaculty,
-  STATUS, STATUS_LABELS, STATUS_BADGE
+  getAuthUser, STATUS, STATUS_LABELS, STATUS_BADGE
 } from '../state.js';
 import {
   acceptTicketAction, startWorkAction, resolveTicketAction,
@@ -16,7 +16,7 @@ import { fetchTicketById } from '../api.js';
 import { navigate } from '../router.js';
 import {
   timeAgo, formatDateTime, formatCountdown, slaBarColor,
-  categoryLabel, showToast, showPrompt, esc
+  categoryLabel, isHighPriorityFacility, showToast, showPrompt, esc
 } from '../utils.js';
 
 export function renderTicketDetail(container, params = {}) {
@@ -36,6 +36,7 @@ export function renderTicketDetail(container, params = {}) {
   function render() {
     // Fallback to local cache if available
     const t = ticketData || getTickets().find(x => x.ticket_id === ticketId);
+    const currentUser = getAuthUser();
 
     if (!t) {
       container.innerHTML = `
@@ -50,15 +51,44 @@ export function renderTicketDetail(container, params = {}) {
       return;
     }
 
-    const currentRole = getCurrentRole();
+    // Strict Student Privacy Check:
+    // If logged in as student, prevent viewing other students' tickets
+    if (currentUser && currentUser.role === 'student') {
+      const isOwner = (t.student_id === currentUser.id) ||
+                      (t.student_id === currentUser.username) ||
+                      (t.student_name && currentUser.name && t.student_name.toLowerCase() === currentUser.name.toLowerCase());
+
+      if (!isOwner) {
+        container.innerHTML = `
+          <div class="panel access-denied-box">
+            <div class="access-denied-icon">🔒</div>
+            <h2>Confidentiality Protection: Access Restricted</h2>
+            <p>
+              Under CampusSOS Data Governance Rules, student grievances are strictly confidential.
+              You (<strong>${esc(currentUser.name)}</strong>) do not have authorization to view grievance <strong>${esc(ticketId)}</strong> filed by another student.
+            </p>
+            <div style="margin-top:20px;">
+              <button class="btn btn-primary" id="btn-back-to-my-portal">← Return to My Grievance Portal</button>
+            </div>
+          </div>
+        `;
+        container.querySelector('#btn-back-to-my-portal')?.addEventListener('click', () => navigate('/student'));
+        return;
+      }
+    }
+
+    const currentRole = currentUser?.role || getCurrentRole();
     const currentFaculty = getCurrentFaculty();
     const statusBadge = STATUS_BADGE[t.status] || 'badge-submitted';
     const statusLabel = STATUS_LABELS[t.status] || t.status;
     const sla = t.sla_seconds || 60;
-    const remaining = t.seconds_until_escalation ?? sla;
+    const nowSec = Date.now() / 1000;
+    const deadline = t.sla_deadline || (nowSec + sla);
+    const remaining = Math.max(0, Math.round(deadline - nowSec));
     const pct = Math.max(0, Math.min(100, (remaining / sla) * 100));
     const isEscalated = t.status === 'escalated' || (t.escalation_level || 0) > 0;
     const isReopened = t.status === 'reopened';
+    const isPriorityLoc = isHighPriorityFacility(t.location, t.complaint_text, t.category);
     const timeline = t.timeline || [];
 
     container.innerHTML = `
@@ -75,6 +105,7 @@ export function renderTicketDetail(container, params = {}) {
             <span class="badge ${statusBadge}">${statusLabel}</span>
             ${t.urgency ? `<span class="badge badge-${t.urgency}">${t.urgency} urgency</span>` : ''}
             ${t.category ? `<span class="badge badge-cat">${categoryLabel(t.category)}</span>` : ''}
+            ${isPriorityLoc ? `<span class="badge badge-priority-facility">⚡ Priority Facility (${esc(t.location)})</span>` : ''}
             ${isEscalated ? `<span class="badge badge-escalated">Escalated Level ${t.escalation_level || 1}</span>` : ''}
             ${isReopened ? `<span class="badge badge-reopened">Reopened (${t.reopened_count || 1}x)</span>` : ''}
           </div>
@@ -193,11 +224,11 @@ export function renderTicketDetail(container, params = {}) {
               </div>
 
               ${t.status !== 'resolved_awaiting' && t.status !== 'closed' && !isEscalated ? `
-                <div style="margin-top:14px;">
+                <div class="sla-bar-container" data-sla-deadline="${deadline}" data-sla-total="${sla}" data-sla-status="${t.status}" data-sla-label-mode="standard" style="margin-top:14px;">
                   <div class="sla-bar-track">
                     <div class="sla-bar-fill" style="width:${pct}%;background:${slaBarColor(pct)}"></div>
                   </div>
-                  <div style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:6px;">
+                  <div class="sla-bar-label" style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:6px;">
                     ${remaining > 0 ? formatCountdown(remaining) + ' remaining' : 'SLA Breached'}
                   </div>
                 </div>

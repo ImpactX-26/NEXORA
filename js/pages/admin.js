@@ -285,7 +285,10 @@ export function renderAdminDashboard(container) {
         : filteredTickets.map(t => {
           const statusBadge = STATUS_BADGE[t.status] || 'badge-submitted';
           const statusLabel = STATUS_LABELS[t.status] || t.status;
-          const remaining = t.seconds_until_escalation ?? t.sla_seconds ?? 60;
+          const sla = t.sla_seconds || 60;
+          const nowSec = Date.now() / 1000;
+          const deadline = t.sla_deadline || (nowSec + sla);
+          const remaining = Math.max(0, Math.round(deadline - nowSec));
           return `
             <tr style="cursor:pointer;" data-ticket-link="${t.ticket_id}">
               <td class="cell-id">${t.ticket_id}</td>
@@ -301,12 +304,12 @@ export function renderAdminDashboard(container) {
               <td>
                 <span class="badge ${statusBadge}">${statusLabel}</span>
               </td>
-              <td>
+              <td data-sla-deadline="${deadline}" data-sla-total="${sla}" data-sla-status="${t.status}" data-sla-label-mode="compact">
                 ${t.status === 'escalated' || (t.escalation_level || 0) > 0
                   ? `<span style="color:var(--red);font-weight:700;font-size:11px;">⚠️ Level ${t.escalation_level}</span>`
                   : (['closed', 'verified', 'resolved_awaiting'].includes(t.status)
                     ? `<span style="color:var(--text-muted);font-size:11px;">Completed</span>`
-                    : `<span style="font-family:var(--font-mono);font-size:11px;color:${remaining <= 10 ? 'var(--red)' : 'var(--green)'};">${remaining}s</span>`
+                    : `<span class="sla-bar-label" style="font-family:var(--font-mono);font-size:11px;color:${remaining <= 10 ? 'var(--red)' : 'var(--green)'};">${remaining > 0 ? remaining + 's' : 'Breached'}</span>`
                   )
                 }
               </td>

@@ -68,12 +68,14 @@ export function startBackgroundSync(intervalMs = 2500) {
 // ── Student Complaint Filing ────────────────────────────────
 export async function fileComplaint(text, name, location) {
   showToast('Intake Agent analyzing grievance...', 'info');
+  const user = getState().currentUser;
   
   try {
     const createdTicket = await submitComplaintTicket({
       complaint_text: text,
-      student_name: name || 'Anonymous Student',
+      student_name: name || user?.name || 'Student',
       location: location || 'Campus',
+      student_id: user?.id || 'USR_STU_01',
     });
 
     updateLocalTicket(createdTicket);

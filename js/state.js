@@ -5,6 +5,7 @@
 // ============================================================
 
 const STORAGE_KEY = 'campussos_v2_prefs';
+const AUTH_KEY = 'campussos_v2_auth';
 
 // Status flow constants
 export const STATUS = {
@@ -44,10 +45,12 @@ export const STATUS_BADGE = {
 };
 
 let state = {
+  // Authentication state
+  currentUser: null, // { id, username, name, role, department_id, staff_id, staff_role, department_name }
   tickets: [],
   facultyList: [],
-  currentFaculty: 'Suresh Nair', // default demo faculty
-  currentFacultyId: 'STF-002',
+  currentFaculty: 'Campus Electrician', // default faculty designation
+  currentFacultyId: 'STF-ELEC',
   currentRole: 'student',        // 'student' | 'faculty' | 'admin'
   demoMode: true,
   agentLog: [],
@@ -68,6 +71,9 @@ export function notify() {
 
 // ── Getters ─────────────────────────────────────────────────
 export function getState() { return state; }
+export function getAuthUser() { return state.currentUser; }
+export function isAuthenticated() { return Boolean(state.currentUser); }
+export function getUserRole() { return state.currentUser?.role || null; }
 export function getTickets() { return state.tickets; }
 export function getTicketById(id) {
   return state.tickets.find(t => t.ticket_id === id || String(t.id) === String(id));
@@ -80,6 +86,31 @@ export function isDemoMode() { return state.demoMode; }
 export function getAgentLog() { return state.agentLog; }
 export function getInsightCache() { return state.insightCache; }
 export function isBackendConnected() { return state.backendConnected; }
+
+// ── Auth Setters ────────────────────────────────────────────
+export function setAuthUser(user) {
+  state.currentUser = user || null;
+  if (user && user.role) {
+    state.currentRole = user.role;
+    if (user.role === 'faculty') {
+      if (user.staff_name || user.name) {
+        state.currentFaculty = user.staff_name || user.name;
+      }
+      if (user.staff_id) {
+        state.currentFacultyId = user.staff_id;
+      }
+    }
+  }
+  saveAuth();
+  savePrefs();
+  notify();
+}
+
+export function clearAuthUser() {
+  state.currentUser = null;
+  saveAuth();
+  notify();
+}
 
 // ── Setters ─────────────────────────────────────────────────
 export function setTickets(tickets) {
@@ -152,7 +183,17 @@ export function setBackendStatus(connected, groqKeySet = false) {
   notify();
 }
 
-// ── Persistence for preferences ─────────────────────────────
+// ── Persistence for preferences & auth ──────────────────────
+function saveAuth() {
+  try {
+    if (state.currentUser) {
+      localStorage.setItem(AUTH_KEY, JSON.stringify(state.currentUser));
+    } else {
+      localStorage.removeItem(AUTH_KEY);
+    }
+  } catch (e) {}
+}
+
 function savePrefs() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -166,10 +207,22 @@ function savePrefs() {
 
 export function loadPrefs() {
   try {
+    // Load auth
+    const rawAuth = localStorage.getItem(AUTH_KEY);
+    if (rawAuth) {
+      const parsedUser = JSON.parse(rawAuth);
+      if (parsedUser && parsedUser.id) {
+        state.currentUser = parsedUser;
+        if (parsedUser.role) state.currentRole = parsedUser.role;
+        if (parsedUser.staff_name || parsedUser.name) state.currentFaculty = parsedUser.staff_name || parsedUser.name;
+        if (parsedUser.staff_id) state.currentFacultyId = parsedUser.staff_id;
+      }
+    }
+
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed.currentRole) state.currentRole = parsed.currentRole;
+      if (parsed.currentRole && !state.currentUser) state.currentRole = parsed.currentRole;
       if (parsed.currentFaculty) state.currentFaculty = parsed.currentFaculty;
       if (parsed.currentFacultyId) state.currentFacultyId = parsed.currentFacultyId;
       if (typeof parsed.demoMode === 'boolean') state.demoMode = parsed.demoMode;

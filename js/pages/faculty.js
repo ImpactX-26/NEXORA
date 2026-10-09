@@ -5,7 +5,7 @@
 
 import {
   getTickets, getFacultyList, getCurrentFaculty,
-  setCurrentFaculty, STATUS, STATUS_LABELS, STATUS_BADGE
+  setCurrentFaculty, getAuthUser, STATUS, STATUS_LABELS, STATUS_BADGE
 } from '../state.js';
 import {
   acceptTicketAction, startWorkAction, resolveTicketAction,
@@ -14,6 +14,7 @@ import {
 import { navigate } from '../router.js';
 import {
   timeAgo, formatCountdown, slaBarColor, categoryLabel,
+  isHighPriorityFacility, getPriorityRankScore,
   showToast, showPrompt, esc
 } from '../utils.js';
 
@@ -24,13 +25,18 @@ export function renderFacultyPortal(container) {
   function render() {
     const allTickets = getTickets();
     const facultyList = getFacultyList();
-    const currentFacultyName = getCurrentFaculty();
+    const authUser = getAuthUser();
+    let currentFacultyName = getCurrentFaculty();
+
+    if (authUser && authUser.role === 'faculty' && (authUser.staff_name || authUser.name)) {
+      currentFacultyName = authUser.staff_name || authUser.name;
+    }
 
     // Find current staff object
-    const currentStaff = facultyList.find(s => s.name === currentFacultyName) || facultyList[0] || {
-      name: currentFacultyName || 'Suresh Nair',
-      role: 'Electrician',
-      department_name: 'Hostel Maintenance'
+    const currentStaff = facultyList.find(s => s.name === currentFacultyName || s.id === authUser?.staff_id) || facultyList[0] || {
+      name: currentFacultyName || 'Campus Electrician',
+      role: authUser?.staff_role || 'Campus Electrician',
+      department_name: authUser?.department_name || 'Electrical Maintenance'
     };
 
     // Filter tickets assigned to this staff member
@@ -53,6 +59,23 @@ export function renderFacultyPortal(container) {
     else if (activeTab === 'awaiting') displayList = awaitingTickets;
     else if (activeTab === 'escalated') displayList = escalatedTickets;
     else displayList = assignedTickets;
+
+    // High-Priority Sorting for Staff Portal:
+    // Ensures lab, faculty room, staff room, server room, and library complaints are prioritized first at the top
+    displayList.sort((a, b) => {
+      const scoreA = getPriorityRankScore(a);
+      const scoreB = getPriorityRankScore(b);
+      if (scoreB !== scoreA) {
+        return scoreB - scoreA; // High priority facility/urgency at top
+      }
+      const nowSec = Date.now() / 1000;
+      const remA = a.sla_deadline ? (a.sla_deadline - nowSec) : (a.seconds_until_escalation ?? 9999);
+      const remB = b.sla_deadline ? (b.sla_deadline - nowSec) : (b.seconds_until_escalation ?? 9999);
+      if (Math.abs(remA - remB) > 1) {
+        return remA - remB; // Soonest to breach first
+      }
+      return (b.created_at || 0) - (a.created_at || 0);
+    });
 
     const shell = container.querySelector('#faculty-portal-shell');
     if (shell) {
@@ -223,22 +246,27 @@ function renderFacultyTicketCard(t, facultyName) {
   const statusBadge = STATUS_BADGE[t.status] || 'badge-submitted';
   const statusLabel = STATUS_LABELS[t.status] || t.status;
   const sla = t.sla_seconds || 60;
-  const remaining = t.seconds_until_escalation ?? sla;
+  const nowSec = Date.now() / 1000;
+  const deadline = t.sla_deadline || (nowSec + sla);
+  const remaining = Math.max(0, Math.round(deadline - nowSec));
   const pct = Math.max(0, Math.min(100, (remaining / sla) * 100));
   const isEscalated = t.status === 'escalated' || (t.escalation_level || 0) > 0;
   const isReopened = t.status === 'reopened';
+  const isPriorityLoc = isHighPriorityFacility(t.location, t.complaint_text, t.category);
 
   return `
     <div class="panel ticket-card ${isEscalated ? 'escalated' : ''} ${isReopened ? 'border-red' : ''}" data-ticket-link="${t.ticket_id}" style="margin-bottom:14px;cursor:pointer;">
       <div class="flex-between" style="margin-bottom:8px;">
-        <div style="display:flex;align-items:center;gap:10px;">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <span class="ticket-id" style="font-size:14px;">${t.ticket_id}</span>
           <span class="badge ${statusBadge}">${statusLabel}</span>
           ${t.urgency ? `<span class="badge badge-${t.urgency}">${t.urgency} urgency</span>` : ''}
           ${t.category ? `<span class="badge badge-cat">${categoryLabel(t.category)}</span>` : ''}
+          ${isPriorityLoc ? `<span class="badge badge-priority-facility">⚡ Priority Facility (${esc(t.location || 'Key Area')})</span>` : ''}
           ${isReopened ? `<span class="badge badge-reopened">Reopened (${t.reopened_count || 1}x)</span>` : ''}
+          ${isEscalated && t.escalation_level ? `<span class="badge badge-escalated">Level ${t.escalation_level}</span>` : ''}
         </div>
-        <span class="ticket-age">${timeAgo(t.created_at * 1000 || t.created_at)}</span>
+        <span class="ticket-age" data-created-at="${t.created_at}">${timeAgo(t.created_at * 1000 || t.created_at)}</span>
       </div>
 
       <div class="ticket-title" style="font-size:15px;margin-bottom:6px;">
@@ -248,7 +276,7 @@ function renderFacultyTicketCard(t, facultyName) {
       <div class="complaint-text-block" style="margin-bottom:10px;padding:10px 14px;">
         <strong>Student Complaint:</strong> "${esc(t.complaint_text)}"
         <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
-          Filed by: ${esc(t.student_name || 'Student')} | Location: <strong>${esc(t.location || 'Campus')}</strong>
+          Filed by: ${esc(t.student_name || 'Student')} | Location: <strong style="${isPriorityLoc ? 'color:#fbbf24;' : ''}">${esc(t.location || 'Campus')}</strong>
         </div>
       </div>
 
@@ -265,7 +293,7 @@ function renderFacultyTicketCard(t, facultyName) {
       ` : ''}
 
       ${t.status !== 'resolved_awaiting' && t.status !== 'closed' && !isEscalated ? `
-        <div class="sla-bar-container" style="margin-bottom:12px;">
+        <div class="sla-bar-container" data-sla-deadline="${deadline}" data-sla-total="${sla}" data-sla-status="${t.status}" data-sla-label-mode="remaining" style="margin-bottom:12px;">
           <div class="sla-bar-track">
             <div class="sla-bar-fill" style="width:${pct}%;background:${slaBarColor(pct)}"></div>
           </div>

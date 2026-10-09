@@ -61,18 +61,124 @@ export function slaBarColor(remainingPct) {
   return 'var(--green)';
 }
 
+/** High-priority campus facility keywords for electrical & network issues */
+export const HIGH_PRIORITY_FACILITIES = [
+  'lab', 'labs', 'computer lab', 'physics lab', 'chemistry lab',
+  'faculty room', 'staff room', 'server room', 'library', 'central library',
+  'seminar hall', 'study hall', 'exam hall', 'data center', 'academic block'
+];
+
+/** Check if a grievance is in a high-priority campus facility (especially electrical/network) */
+export function isHighPriorityFacility(locationStr = '', textStr = '', category = '') {
+  const combined = `${locationStr || ''} ${textStr || ''}`.toLowerCase();
+  const hasKeyword = HIGH_PRIORITY_FACILITIES.some(k => combined.includes(k));
+  const cat = (category || '').toLowerCase();
+  const isTech = ['electrical', 'wifi', 'network'].includes(cat) || !cat;
+  return hasKeyword && isTech;
+}
+
+/** Compute numerical priority ranking score for sorting tickets on staff portal */
+export function getPriorityRankScore(ticket) {
+  let score = 0;
+  const status = (ticket.status || '').toLowerCase();
+  const isEscalated = status === 'escalated' || (ticket.escalation_level || 0) > 0;
+  const isReopened = status === 'reopened';
+  const isHighLoc = isHighPriorityFacility(ticket.location, ticket.complaint_text, ticket.category);
+  const urg = (ticket.urgency || '').toLowerCase();
+
+  // 1. Escalated tickets come first
+  if (isEscalated) score += 100000 + (ticket.escalation_level || 1) * 20000;
+  // 2. Reopened tickets come next
+  if (isReopened) score += 50000;
+  // 3. High-priority facility (Staff room, Labs, Server room, Library)
+  if (isHighLoc) score += 30000;
+  // 4. Urgency levels
+  if (urg === 'critical') score += 15000;
+  else if (urg === 'high') score += 8000;
+  else if (urg === 'medium') score += 3000;
+  else if (urg === 'low') score += 1000;
+
+  return score;
+}
+
+/** Live real-time SLA countdown DOM updater (runs every 1000ms) */
+export function updateDomSlaTimers() {
+  const now = Date.now() / 1000;
+  const timerElements = document.querySelectorAll('[data-sla-deadline]');
+
+  timerElements.forEach(el => {
+    const deadline = parseFloat(el.getAttribute('data-sla-deadline'));
+    const total = parseFloat(el.getAttribute('data-sla-total')) || 60;
+    const status = (el.getAttribute('data-sla-status') || '').toLowerCase();
+
+    // Skip closed or awaiting verification tickets
+    if (!deadline || ['closed', 'verified', 'resolved_awaiting'].includes(status)) return;
+
+    const remaining = Math.max(0, Math.round(deadline - now));
+    const pct = Math.max(0, Math.min(100, (remaining / total) * 100));
+
+    // Update bar fill
+    const fill = el.querySelector('.sla-bar-fill');
+    if (fill) {
+      fill.style.width = `${pct}%`;
+      fill.style.background = slaBarColor(pct);
+    }
+
+    // Update text labels
+    const label = el.querySelector('.sla-bar-label');
+    if (label) {
+      const mode = el.getAttribute('data-sla-label-mode') || 'standard';
+      if (remaining > 0) {
+        if (mode === 'until') {
+          label.textContent = `${formatCountdown(remaining)} until escalation`;
+        } else if (mode === 'remaining') {
+          label.textContent = `${formatCountdown(remaining)} SLA remaining`;
+        } else if (mode === 'compact') {
+          label.textContent = formatCountdown(remaining);
+        } else {
+          label.textContent = `${formatCountdown(remaining)} remaining`;
+        }
+        label.style.color = (pct <= 25) ? 'var(--red)' : '';
+      } else {
+        label.textContent = 'SLA Breached';
+        label.style.color = 'var(--red)';
+      }
+    }
+  });
+
+  // Also update relative timestamps (e.g. "12s ago")
+  const ageElements = document.querySelectorAll('[data-created-at]');
+  ageElements.forEach(el => {
+    const ts = parseFloat(el.getAttribute('data-created-at'));
+    if (ts) {
+      el.textContent = timeAgo(ts * 1000 > Date.now() * 10 ? ts : ts * 1000);
+    }
+  });
+}
+
+let _liveTickerInterval = null;
+export function startLiveSlaTicker() {
+  if (_liveTickerInterval) return;
+  _liveTickerInterval = setInterval(updateDomSlaTimers, 1000);
+}
+
 /** Category label */
 export function categoryLabel(cat) {
   const labels = {
-    electrical: 'Electrical',
-    plumbing: 'Plumbing',
-    mess: 'Mess / Food',
-    wifi: 'WiFi / Network',
-    timetable: 'Timetable',
-    safety: 'Safety',
-    other: 'Other',
+    electrical: '⚡ Electrical Issue',
+    wifi: '📶 WiFi & Network',
+    network: '📶 WiFi & Network',
+    bullying_crime: '🛡️ Anti-Ragging & Discipline',
+    bullying: '🛡️ Anti-Ragging & Discipline',
+    ragging: '🛡️ Anti-Ragging & Discipline',
+    crime: '🛡️ Campus Discipline',
+    grievance_redressal: '⚖️ Grievance Redressal',
+    academic: '⚖️ Academic Grievance',
+    harassment: '⚖️ Harassment Grievance',
+    administrative: '⚖️ Administrative Grievance',
+    other: '📌 General Grievance',
   };
-  return labels[cat] || cat || 'Unclassified';
+  return labels[cat] || cat || 'General Grievance';
 }
 
 /** Show toast notification */

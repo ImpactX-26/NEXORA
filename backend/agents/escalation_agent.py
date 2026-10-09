@@ -4,13 +4,11 @@ from backend.database import get_db_connection
 
 # Escalation Hierarchy configuration
 ESCALATION_CHAIN = {
-    'DEPT_MAINT': ['Maintenance Officer in Charge', 'Chief Warden', 'Estate Officer & Dean'],
-    'DEPT_MESS':  ['Mess Committee Convenor', 'Dean of Student Affairs', 'Director Office'],
-    'DEPT_IT':    ['Head of Computer Centre', 'Dean of Infrastructure', 'Director Office'],
-    'DEPT_ACAD':  ['Department HOD', 'Dean of Academics', 'Director Office'],
-    'DEPT_SEC':   ['Chief Security Officer', 'Dean of Student Affairs', 'Campus Director'],
-    'DEPT_WARDEN':['Chief Warden', 'Dean of Student Affairs', 'Campus Director'],
-    'DEFAULT':    ['Department Head', 'Dean of Student Affairs', 'Campus Director']
+    'DEPT_ELEC': ['Electrical Maintenance Supervisor', 'Chief Estate Officer', 'Institutional Director'],
+    'DEPT_IT':   ['Head of Computer Centre', 'Dean of Digital Infrastructure', 'Institutional Director'],
+    'DEPT_EXEC': ['Anti-Ragging Committee', 'Disciplinary Governing Council', 'Principal / Institutional Director'],
+    'DEPT_GRO':  ['University Ombudsperson', 'Executive Grievance Tribunal', 'Principal / Institutional Director'],
+    'DEFAULT':   ['Senior Administrative Officer', 'Dean of Student Welfare', 'Institutional Director']
 }
 
 def check_and_escalate_tickets() -> list:

@@ -5,15 +5,18 @@ from backend.database import get_db_connection
 
 # Department mapping for categories
 CATEGORY_TO_DEPT = {
-    'electrical': 'DEPT_MAINT',
-    'plumbing':   'DEPT_MAINT',
-    'hostel':     'DEPT_MAINT',
-    'mess':       'DEPT_MESS',
-    'wifi':       'DEPT_IT',
-    'timetable':  'DEPT_ACAD',
-    'academic':   'DEPT_ACAD',
-    'security':   'DEPT_SEC',
-    'other':      'DEPT_WARDEN'
+    'electrical':          'DEPT_ELEC',
+    'wifi':                'DEPT_IT',
+    'network':             'DEPT_IT',
+    'bullying_crime':      'DEPT_EXEC',
+    'bullying':            'DEPT_EXEC',
+    'crime':               'DEPT_EXEC',
+    'ragging':             'DEPT_EXEC',
+    'grievance_redressal': 'DEPT_GRO',
+    'academic':            'DEPT_GRO',
+    'harassment':          'DEPT_GRO',
+    'administrative':      'DEPT_GRO',
+    'other':               'DEPT_GRO'
 }
 
 def route_ticket(intake_result: dict, location: str = 'Campus') -> dict:
@@ -21,13 +24,17 @@ def route_ticket(intake_result: dict, location: str = 'Campus') -> dict:
     Agent 2: Routing Agent.
     Routes classified ticket to a REAL database staff member.
     Enforces zero-hallucination guarantee by querying SQLite for candidate staff and scoring them.
+    Directs all bullying and ragging complaints directly to the Vice Principal.
+    Directs electrical issues to the Campus Electrician.
+    Directs network/wifi issues to the Network Engineer.
+    Directs serious unfair treatment, academic problems, harassment, and administrative failures to the Grievance Redressal Officer.
     """
     category = intake_result.get('category', 'other')
     urgency = intake_result.get('urgency', 'medium')
     title = intake_result.get('title', '')
     complaint_summary = intake_result.get('summary', '')
 
-    target_dept_id = CATEGORY_TO_DEPT.get(category, 'DEPT_WARDEN')
+    target_dept_id = CATEGORY_TO_DEPT.get(category, 'DEPT_GRO')
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -107,9 +114,24 @@ def route_ticket(intake_result: dict, location: str = 'Campus') -> dict:
         reasons = []
 
         spec_text = ' '.join(cand['specializations']).lower() + ' ' + cand['role'].lower()
-        if cat_lower in spec_text or any(k in spec_text for k in [cat_lower, 'electric' if cat_lower == 'electrical' else cat_lower, 'plumb' if cat_lower == 'plumbing' else cat_lower]):
+        
+        # High priority matching for Executive Office (Vice Principal)
+        if cat_lower in ['bullying_crime', 'bullying', 'crime', 'ragging'] or target_dept_id == 'DEPT_EXEC':
+            if 'vice principal' in cand['role'].lower() or 'vice principal' in spec_text:
+                score += 20
+                reasons.append("designated Vice Principal for student safety & discipline")
+            else:
+                score += 10
+                reasons.append("executive disciplinary committee")
+        elif cat_lower in ['grievance_redressal', 'academic', 'harassment', 'administrative'] or target_dept_id == 'DEPT_GRO':
+            if 'grievance' in cand['role'].lower() or 'grievance' in spec_text:
+                score += 20
+                reasons.append("designated Grievance Redressal Officer for institutional justice")
+            else:
+                score += 10
+        elif cat_lower in spec_text or any(k in spec_text for k in [cat_lower, 'electric' if cat_lower == 'electrical' else cat_lower, 'wifi' if cat_lower == 'wifi' else cat_lower]):
             score += 6
-            reasons.append(f"role/specialization matches '{category}'")
+            reasons.append(f"role matches '{category}'")
 
         if loc_lower and loc_lower in spec_text:
             score += 4
@@ -138,10 +160,21 @@ def route_ticket(intake_result: dict, location: str = 'Campus') -> dict:
     cand_reasons = score_breakdown.get(staff_id, (0, []))[1]
     reason_str = ', '.join(cand_reasons) if cand_reasons else f"assigned based on department availability and lowest current workload ({selected_staff['workload']} tickets)"
 
-    routing_explanation = (
-        f"Routing Agent assigned complaint to {dept_name} -> {staff_name} ({staff_role}) "
-        f"because {reason_str}."
-    )
+    if cat_lower in ['bullying_crime', 'bullying', 'crime', 'ragging'] or target_dept_id == 'DEPT_EXEC':
+        routing_explanation = (
+            f"Direct Executive Routing: Incident classified under Anti-Ragging & Campus Discipline. "
+            f"Assigned directly to {dept_name} -> {staff_name} for immediate intervention."
+        )
+    elif cat_lower in ['grievance_redressal', 'academic', 'harassment', 'administrative'] or target_dept_id == 'DEPT_GRO':
+        routing_explanation = (
+            f"Grievance Cell Routing: Issue classified under Institutional Grievance Redressal. "
+            f"Assigned directly to {dept_name} -> {staff_name} for investigation and redressal."
+        )
+    else:
+        routing_explanation = (
+            f"Routing Agent assigned complaint to {dept_name} -> {staff_name} "
+            f"because {reason_str}."
+        )
 
     avg_close_hours = round(max(1.0, selected_staff.get('avg_resolution_seconds', 3600) / 3600.0), 1)
 

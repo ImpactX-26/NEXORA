@@ -3,7 +3,7 @@ import json
 from backend.database import get_db_connection, init_db, log_ticket_event, set_demo_mode
 
 def seed_database():
-    """Seed initial data with departments, staff directory, demo users, and realistic sample tickets."""
+    """Seed initial data with departments, staff directory, demo users, and realistic sample tickets without personal names."""
     init_db()
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -18,94 +18,114 @@ def seed_database():
 
     now = time.time()
 
-    # 1. Seed Departments
+    # 1. Seed 4 Core Departments
     departments = [
-        ('DEPT_MAINT', 'Hostel Maintenance', 120, 'Chief Warden'),
-        ('DEPT_MESS', 'Mess Committee', 90, 'Dean of Student Affairs'),
-        ('DEPT_IT', 'IT & Networking', 60, 'Head of Computer Centre'),
-        ('DEPT_ACAD', 'Academic Office', 240, 'Dean of Academics'),
-        ('DEPT_SEC', 'Campus Security', 30, 'Chief Security Officer'),
-        ('DEPT_WARDEN', 'Warden Office', 180, 'Dean of Student Affairs'),
+        ('DEPT_ELEC', 'Electrical Maintenance', 60, 'Chief Electrical Engineer'),
+        ('DEPT_IT', 'IT & Network Operations', 60, 'Head of Computer Centre'),
+        ('DEPT_EXEC', 'Office of the Vice Principal', 15, 'Disciplinary Governing Council'),
+        ('DEPT_GRO', 'Grievance Redressal Cell', 120, 'Institutional Ombudsperson'),
     ]
     cursor.executemany('''
         INSERT INTO departments (id, name, default_sla_minutes, escalation_target, created_at)
         VALUES (?, ?, ?, ?, ?)
     ''', [(d[0], d[1], d[2], d[3], now) for d in departments])
 
-    # 2. Seed Staff Directory
+    # 2. Seed 4 Official Staff Designations (No personal names)
     staff_members = [
-        ('STF-001', 'Ramesh Kumar', 'ramesh.maint@campus.edu', 'Maintenance Officer', 'DEPT_MAINT', json.dumps(["general maintenance", "appliances", "furniture", "Hostel 1", "Hostel 2"]), 1, 1, 14, 1800.0),
-        ('STF-002', 'Suresh Nair', 'suresh.elec@campus.edu', 'Electrician', 'DEPT_MAINT', json.dumps(["electrical", "wiring", "plugs", "lighting", "appliances", "Hostel 1", "Hostel 2", "Block A", "Block B"]), 1, 1, 28, 1200.0),
-        ('STF-003', 'Priya Sharma', 'priya.plumb@campus.edu', 'Plumbing Specialist', 'DEPT_MAINT', json.dumps(["plumbing", "water supply", "leakage", "washrooms", "Hostel 1", "Hostel 2", "Block C", "Block D"]), 1, 1, 19, 2100.0),
-        ('STF-004', 'Anita Desai', 'anita.mess@campus.edu', 'Mess Supervisor', 'DEPT_MESS', json.dumps(["mess", "food quality", "hygiene", "catering", "Main Mess"]), 1, 1, 35, 950.0),
-        ('STF-005', 'Vikram Iyer', 'vikram.food@campus.edu', 'Food Quality Officer', 'DEPT_MESS', json.dumps(["mess", "food safety", "nutrition", "dietary", "Main Mess"]), 1, 0, 12, 1400.0),
-        ('STF-006', 'Arjun Mehta', 'arjun.net@campus.edu', 'Network Engineer', 'DEPT_IT', json.dumps(["wifi", "network", "internet", "router", "switch", "Block A", "Block B", "Block C", "Block D"]), 1, 1, 42, 800.0),
-        ('STF-007', 'Sneha Patel', 'sneha.it@campus.edu', 'IT Support Specialist', 'DEPT_IT', json.dumps(["software", "portal", "hardware", "lab", "Library", "Academic Block"]), 1, 0, 22, 1100.0),
-        ('STF-008', 'Dr. Kavitha Rao', 'kavitha.acad@campus.edu', 'Academic Coordinator', 'DEPT_ACAD', json.dumps(["academic", "grading", "courses", "examinations", "Academic Block"]), 1, 0, 16, 3600.0),
-        ('STF-009', 'Prof. Sunil Bhat', 'sunil.sched@campus.edu', 'Scheduling Officer', 'DEPT_ACAD', json.dumps(["timetable", "classroom allocation", "clash", "scheduling", "Academic Block"]), 1, 1, 20, 2400.0),
-        ('STF-010', 'Kavya Reddy', 'kavya.warden@campus.edu', 'Chief Warden', 'DEPT_WARDEN', json.dumps(["hostel discipline", "room allocation", "general warden", "safety"]), 1, 1, 8, 4800.0),
-        ('STF-011', 'Capt. Rajeev Verma', 'rajeev.sec@campus.edu', 'Security Officer', 'DEPT_SEC', json.dumps(["security", "safety", "gate lock", "surveillance", "night patrol"]), 1, 0, 15, 600.0),
+        (
+            'STF-ELEC', 'Campus Electrician', 'electrician@campus.edu', 'Campus Electrician',
+            'DEPT_ELEC',
+            json.dumps(["electrical", "wiring", "sockets", "sparking", "lighting", "appliances", "power cut", "voltage", "blackout", "circuit breaker", "Block A", "Block B", "Block C", "Block D", "Hostel 1", "Hostel 2"]),
+            1, 1, 28, 1200.0
+        ),
+        (
+            'STF-NET', 'Network Engineer', 'network.engineer@campus.edu', 'Network Engineer',
+            'DEPT_IT',
+            json.dumps(["wifi", "network", "internet", "router", "switch", "ethernet", "lan", "bandwidth", "disconnect", "gateway", "dns", "Block A", "Block B", "Block C", "Block D", "Lab"]),
+            1, 1, 42, 800.0
+        ),
+        (
+            'STF-VP', 'Vice Principal', 'viceprincipal@campus.edu', 'Vice Principal (Discipline & Anti-Ragging)',
+            'DEPT_EXEC',
+            json.dumps(["bullying", "ragging", "campus crime", "assault", "violence", "threat", "harassment", "extortion", "student discipline", "anti-ragging", "safety", "Hostel 1", "Hostel 2", "Block A", "Block B", "Block C", "Block D"]),
+            1, 1, 32, 600.0
+        ),
+        (
+            'STF-GRO', 'Grievance Redressal Officer', 'grievance.officer@campus.edu', 'Grievance Redressal Officer',
+            'DEPT_GRO',
+            json.dumps(["unfair treatment", "academic problems", "harassment", "administrative failures", "unresolved disputes", "discrimination", "evaluation bias", "scholarship delay", "faculty misconduct", "grading dispute", "arbitrary penalty", "attendance dispute"]),
+            1, 1, 25, 1800.0
+        ),
     ]
     cursor.executemany('''
         INSERT INTO staff (id, name, email, role, department_id, specializations, active, current_open_ticket_count, total_resolved_count, avg_resolution_seconds, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', [(s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7], s[8], s[9], now) for s in staff_members])
 
-    # 3. Seed Users
+    # 3. Seed Users with fixed login credentials (No personal names)
     users = [
-        ('USR_STU_01', 'student_demo', 'Tatva (Student Demo)', 'student', None, None, now),
-        ('USR_FAC_01', 'suresh_nair', 'Suresh Nair (Electrician)', 'faculty', 'DEPT_MAINT', 'STF-002', now),
-        ('USR_FAC_02', 'anita_desai', 'Anita Desai (Mess Supervisor)', 'faculty', 'DEPT_MESS', 'STF-004', now),
-        ('USR_FAC_03', 'arjun_mehta', 'Arjun Mehta (Network Engineer)', 'faculty', 'DEPT_IT', 'STF-006', now),
-        ('USR_ADM_01', 'admin_demo', 'Dean of Student Affairs (Admin)', 'admin', None, None, now),
+        # Student Portal Accounts (Password: student123)
+        ('USR_STU_01', 'student', 'student123', 'Student #101', 'student', None, None, now),
+        ('USR_STU_02', 'student2', 'student123', 'Student #102', 'student', None, None, now),
+        ('USR_STU_03', 'student3', 'student123', 'Student #103', 'student', None, None, now),
+        ('USR_STU_04', 'student4', 'student123', 'Student #104', 'student', None, None, now),
+
+        # Staff Portal Accounts (Password: staff123)
+        ('USR_FAC_01', 'electrician', 'staff123', 'Campus Electrician', 'faculty', 'DEPT_ELEC', 'STF-ELEC', now),
+        ('USR_FAC_02', 'staff', 'staff123', 'Campus Electrician', 'faculty', 'DEPT_ELEC', 'STF-ELEC', now),
+        ('USR_FAC_03', 'network', 'staff123', 'Network Engineer', 'faculty', 'DEPT_IT', 'STF-NET', now),
+        ('USR_FAC_04', 'viceprincipal', 'staff123', 'Vice Principal', 'faculty', 'DEPT_EXEC', 'STF-VP', now),
+        ('USR_FAC_05', 'grievance', 'staff123', 'Grievance Redressal Officer', 'faculty', 'DEPT_GRO', 'STF-GRO', now),
+
+        # Admin Portal Account (Password: admin123)
+        ('USR_ADM_01', 'admin', 'admin123', 'Dean of Student Welfare (Admin)', 'admin', None, None, now),
     ]
     cursor.executemany('''
-        INSERT INTO users (id, username, name, role, department_id, staff_id, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO users (id, username, password, name, role, department_id, staff_id, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ''', users)
 
-    # 4. Seed Realistic Sample Tickets representing all 6 states
-    # Note: timestamps are calculated relative to `now` for active demonstration
+    # 4. Seed Realistic Sample Tickets representing the 4 core categories and workflows
     sample_tickets = [
         {
             'ticket_id': 'CMP-100741',
-            'student_id': 'STU-DEMO',
-            'student_name': 'Aarav Sharma',
-            'complaint_text': 'The plug in my room sparked when I tried to charge my laptop.',
+            'student_id': 'USR_STU_02',
+            'student_name': 'Student #102',
+            'complaint_text': 'The electrical socket in Room 204 sparked and tripped the main circuit breaker when plugging in a laptop charger.',
             'title': 'Sparks from electrical socket',
             'category': 'electrical',
             'urgency': 'high',
             'priority': 'high',
             'location': 'Hostel 2',
-            'department_id': 'DEPT_MAINT',
-            'department_name': 'Hostel Maintenance',
-            'assigned_staff_id': 'STF-002',
-            'assigned_to': 'Suresh Nair',
+            'department_id': 'DEPT_ELEC',
+            'department_name': 'Electrical Maintenance',
+            'assigned_staff_id': 'STF-ELEC',
+            'assigned_to': 'Campus Electrician',
             'status': 'assigned',
             'sla_seconds': 30,
             'sla_deadline': now + 25, # 25s remaining
             'escalation_level': 0,
             'escalated_to': None,
             'escalation_note': None,
-            'intake_reasoning': 'Electrical hazard posing immediate shock/fire risk in student living quarters.',
-            'routing_reasoning': 'Assigned to Hostel Maintenance -> Suresh Nair (Electrician) covering Hostel 2 with lowest active workload.',
+            'intake_reasoning': 'Electrical short circuit risk posing safety hazard in student living quarters.',
+            'routing_reasoning': 'Assigned to Electrical Maintenance -> Campus Electrician with immediate response protocol.',
             'created_at': now - 5,
             'updated_at': now - 5,
         },
         {
             'ticket_id': 'CMP-100742',
-            'student_id': 'STU-DEMO',
-            'student_name': 'Rohan Gupta',
-            'complaint_text': 'WiFi in Block C keeps dropping every ten minutes during lecture hours.',
-            'title': 'Frequent WiFi disconnection in Block C',
+            'student_id': 'USR_STU_03',
+            'student_name': 'Student #103',
+            'complaint_text': 'Campus Wi-Fi in Block C keeps dropping every ten minutes during online lecture and laboratory hours.',
+            'title': 'Frequent Wi-Fi disconnection in Block C',
             'category': 'wifi',
             'urgency': 'medium',
             'priority': 'medium',
             'location': 'Block C',
             'department_id': 'DEPT_IT',
-            'department_name': 'IT & Networking',
-            'assigned_staff_id': 'STF-006',
-            'assigned_to': 'Arjun Mehta',
+            'department_name': 'IT & Network Operations',
+            'assigned_staff_id': 'STF-NET',
+            'assigned_to': 'Network Engineer',
             'status': 'in_progress',
             'sla_seconds': 60,
             'sla_deadline': now + 40,
@@ -113,118 +133,118 @@ def seed_database():
             'escalated_to': None,
             'escalation_note': None,
             'intake_reasoning': 'Network instability affecting academic connectivity in classroom block.',
-            'routing_reasoning': 'Routed to IT & Networking -> Arjun Mehta (Network Engineer) who manages Block C access points.',
+            'routing_reasoning': 'Routed to IT & Network Operations -> Network Engineer who manages campus access points.',
             'created_at': now - 20,
             'updated_at': now - 10,
         },
         {
             'ticket_id': 'CMP-100743',
-            'student_id': 'STU-DEMO',
-            'student_name': 'Ananya Roy',
-            'complaint_text': 'No water supply in Hostel 2 washrooms since morning. Morning routine severely impacted.',
-            'title': 'No water supply in Hostel 2 washrooms',
-            'category': 'plumbing',
+            'student_id': 'USR_STU_04',
+            'student_name': 'Student #104',
+            'complaint_text': 'Core distribution switch in the Campus Server Room experienced a power surge and primary fiber uplink disconnected.',
+            'title': 'Core switch fault in Server Room',
+            'category': 'wifi',
             'urgency': 'critical',
             'priority': 'critical',
-            'location': 'Hostel 2',
-            'department_id': 'DEPT_MAINT',
-            'department_name': 'Hostel Maintenance',
-            'assigned_staff_id': 'STF-003',
-            'assigned_to': 'Priya Sharma',
+            'location': 'Server Room',
+            'department_id': 'DEPT_IT',
+            'department_name': 'IT & Network Operations',
+            'assigned_staff_id': 'STF-NET',
+            'assigned_to': 'Network Engineer',
             'status': 'escalated',
             'sla_seconds': 20,
             'sla_deadline': now - 45, # Overdue
             'escalation_level': 1,
-            'escalated_to': 'Chief Warden',
-            'escalation_note': 'SLA exceeded without resolution. Escalated to Chief Warden for emergency intervention.',
-            'intake_reasoning': 'Critical hygiene and living utility failure affecting multiple hostel residents.',
-            'routing_reasoning': 'Assigned to Priya Sharma (Plumbing Specialist). Automatically escalated due to SLA breach.',
+            'escalated_to': 'Head of Computer Centre',
+            'escalation_note': 'SLA exceeded without resolution. Escalated to Head of Computer Centre for priority network restoration.',
+            'intake_reasoning': 'High-priority network infrastructure failure impacting campus-wide connectivity.',
+            'routing_reasoning': 'Direct Routing: High-priority server facility. Assigned to Network Engineer.',
             'created_at': now - 65,
             'updated_at': now - 5,
         },
         {
             'ticket_id': 'CMP-100744',
-            'student_id': 'STU-DEMO',
-            'student_name': 'Meera Pillai',
-            'complaint_text': 'Dinner dal smelled off again, second time this week at the Main Mess.',
-            'title': 'Spoiled food in Main Mess dinner',
-            'category': 'mess',
+            'student_id': 'USR_STU_01',
+            'student_name': 'Student #101',
+            'complaint_text': 'Air conditioning unit and digital display projectors in Central Library Computer Lab are malfunctioning during study hours.',
+            'title': 'AC & display repair in Library Computer Lab',
+            'category': 'electrical',
             'urgency': 'high',
             'priority': 'high',
-            'location': 'Main Mess',
-            'department_id': 'DEPT_MESS',
-            'department_name': 'Mess Committee',
-            'assigned_staff_id': 'STF-004',
-            'assigned_to': 'Anita Desai',
+            'location': 'Library',
+            'department_id': 'DEPT_ELEC',
+            'department_name': 'Electrical Maintenance',
+            'assigned_staff_id': 'STF-ELEC',
+            'assigned_to': 'Campus Electrician',
             'status': 'resolved_awaiting',
             'sla_seconds': 30,
             'sla_deadline': now + 100,
             'escalation_level': 0,
             'escalated_to': None,
             'escalation_note': None,
-            'intake_reasoning': 'Food quality issue in campus dining facility requiring supervisor inspection.',
-            'routing_reasoning': 'Routed to Mess Committee -> Anita Desai (Mess Supervisor).',
-            'resolution_note': 'Mess vendor inspected and discarded the compromised lentils batch. Head chef reprimanded and quality checklist enforced.',
+            'intake_reasoning': 'High-priority academic facility electrical issue affecting laboratory workstation equipment.',
+            'routing_reasoning': 'Routed to Electrical Maintenance -> Campus Electrician for expedited maintenance.',
+            'resolution_note': 'Inspected HVAC circuit board and replaced faulty capacitor. Display projector power supplies calibrated and functioning.',
             'resolved_at': now - 15,
             'created_at': now - 120,
             'updated_at': now - 15,
         },
         {
             'ticket_id': 'CMP-100745',
-            'student_id': 'STU-DEMO',
-            'student_name': 'Aditya Verma',
-            'complaint_text': 'My DBMS lecture and the DSA lab are scheduled in the same room at 2 PM on Thursday.',
-            'title': 'Timetable collision: DBMS & DSA lab',
-            'category': 'timetable',
+            'student_id': 'USR_STU_01',
+            'student_name': 'Student #101',
+            'complaint_text': 'Course registration portal session timeout glitch resolved after database index maintenance by academic systems team.',
+            'title': 'Course portal session timeout resolved',
+            'category': 'grievance_redressal',
             'urgency': 'medium',
             'priority': 'medium',
             'location': 'Academic Block',
-            'department_id': 'DEPT_ACAD',
-            'department_name': 'Academic Office',
-            'assigned_staff_id': 'STF-009',
-            'assigned_to': 'Prof. Sunil Bhat',
+            'department_id': 'DEPT_GRO',
+            'department_name': 'Grievance Redressal Cell',
+            'assigned_staff_id': 'STF-GRO',
+            'assigned_to': 'Grievance Redressal Officer',
+            'status': 'verified',
+            'sla_seconds': 60,
+            'sla_deadline': now - 600,
+            'escalation_level': 0,
+            'escalated_to': None,
+            'escalation_note': None,
+            'intake_reasoning': 'Academic systems support grievance regarding digital portal accessibility.',
+            'routing_reasoning': 'Assigned to Grievance Redressal Officer for academic coordination.',
+            'resolution_note': 'Academic systems team cleared cached session locks and optimized database connection pool. Portal operating normally.',
+            'resolved_at': now - 400,
+            'student_verification': 'verified',
+            'closed_at': now - 350,
+            'created_at': now - 1200,
+            'updated_at': now - 350,
+        },
+        {
+            'ticket_id': 'CMP-100746',
+            'student_id': 'USR_STU_02',
+            'student_name': 'Student #102',
+            'complaint_text': 'Ceiling fan regulator shorted out and produced burning odor in the common study hall.',
+            'title': 'Shorted fan regulator & burning odor',
+            'category': 'electrical',
+            'urgency': 'medium',
+            'priority': 'medium',
+            'location': 'Hostel 1',
+            'department_id': 'DEPT_ELEC',
+            'department_name': 'Electrical Maintenance',
+            'assigned_staff_id': 'STF-ELEC',
+            'assigned_to': 'Campus Electrician',
             'status': 'reopened',
             'sla_seconds': 60,
             'sla_deadline': now + 35,
             'escalation_level': 0,
             'escalated_to': None,
             'escalation_note': None,
-            'intake_reasoning': 'Course schedule conflict preventing attendance in required engineering modules.',
-            'routing_reasoning': 'Routed to Academic Office -> Prof. Sunil Bhat (Scheduling Officer).',
+            'intake_reasoning': 'Electrical component fault in hostel facility.',
+            'routing_reasoning': 'Assigned to Electrical Maintenance -> Campus Electrician.',
             'student_verification': 'rejected',
-            'verification_reason': 'The lab slot was moved, but the room allocation still shows Room 204 for both sections on the student portal.',
+            'verification_reason': 'Technician inspected the switchboard but the regulator is still sparking when turned to speed 4.',
             'reopened_count': 1,
             'created_at': now - 300,
             'updated_at': now - 25,
-        },
-        {
-            'ticket_id': 'CMP-100740',
-            'student_id': 'STU-DEMO',
-            'student_name': 'Tatva (Student Demo)',
-            'complaint_text': 'Someone broke the lock on the bicycle shed near Block A gate.',
-            'title': 'Damaged bicycle shed lock',
-            'category': 'security',
-            'urgency': 'medium',
-            'priority': 'medium',
-            'location': 'Block A',
-            'department_id': 'DEPT_MAINT',
-            'department_name': 'Hostel Maintenance',
-            'assigned_staff_id': 'STF-001',
-            'assigned_to': 'Ramesh Kumar',
-            'status': 'closed',
-            'sla_seconds': 60,
-            'sla_deadline': now - 600,
-            'escalation_level': 0,
-            'escalated_to': None,
-            'escalation_note': None,
-            'intake_reasoning': 'Physical security infrastructure failure near campus residential perimeter.',
-            'routing_reasoning': 'Assigned to Ramesh Kumar (Maintenance Officer).',
-            'resolution_note': 'Replaced heavy-duty padlock and distributed new keys to security desk.',
-            'resolved_at': now - 400,
-            'student_verification': 'verified',
-            'closed_at': now - 350,
-            'created_at': now - 1200,
-            'updated_at': now - 350,
         }
     ]
 
@@ -295,10 +315,10 @@ def seed_database():
         INSERT INTO insights (headline, body, tags_json, metrics_json, created_at)
         VALUES (?, ?, ?, ?, ?)
     ''', (
-        "Hostel 2 Infrastructure & Dining Quality Cluster Identified",
-        "Autonomous analysis detected high correlation of electrical & plumbing incidents originating from Hostel 2 over the past 48 hours. Furthermore, recurring dining complaints in the Main Mess indicate urgent supplier audit required. SLA breach rate in Hostel Maintenance is currently 16.7%.",
-        json.dumps(["hostel-2", "electrical-hazard", "mess-quality", "sla-warning"]),
-        json.dumps({"active_tickets": 5, "escalation_rate": "16.7%", "top_location": "Hostel 2", "top_category": "electrical"}),
+        "Electrical & Academic Grievance Cluster Identified",
+        "Autonomous analysis detected high volume of electrical maintenance inquiries across Hostel residential blocks alongside persistent administrative follow-ups in the Grievance Redressal Cell. Anti-ragging protocols remain actively monitored under executive escalation.",
+        json.dumps(["electrical-maintenance", "academic-grievance", "anti-ragging", "sla-surveillance"]),
+        json.dumps({"active_tickets": 4, "escalation_rate": "16.7%", "top_location": "Hostel 2", "top_category": "electrical"}),
         now - 300
     ))
 
@@ -311,7 +331,7 @@ def seed_database():
 
     conn.commit()
     conn.close()
-    print("[CampusSOS] Database seeded successfully.")
+    print("[CampusSOS] Database seeded successfully with 4 core roles.")
 
 if __name__ == '__main__':
     seed_database()

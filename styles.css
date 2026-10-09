@@ -1177,3 +1177,442 @@ a:hover { text-decoration: underline; }
 .flex-between { display: flex; justify-content: space-between; align-items: center; }
 .gap-2 { gap: 8px; }
 .gap-3 { gap: 12px; }
+
+/* ── LOGIN & ACCESS CONTROL PORTAL ───────────────────────────── */
+.login-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - var(--topbar-h) - 48px);
+  padding: 24px 16px;
+}
+
+.login-container {
+  background: var(--surface-1);
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius-lg);
+  padding: 32px 36px;
+  max-width: 580px;
+  width: 100%;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.login-container::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--cyan), var(--blue), var(--orange));
+}
+
+.shake-anim {
+  animation: shakeError 0.4s ease-in-out;
+}
+@keyframes shakeError {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.login-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.login-brand-title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--text-primary);
+}
+
+.login-heading {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  letter-spacing: -0.4px;
+}
+
+.login-subheading {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ── PORTAL SELECTOR TABS ────────────────────────────────────── */
+.login-portal-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+  background: var(--surface-2);
+  padding: 6px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+
+.portal-tab-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 10px 8px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  transition: all 0.18s ease;
+  border: 1px solid transparent;
+}
+
+.portal-tab-btn:hover {
+  color: var(--text-primary);
+  background: var(--surface-3);
+}
+
+.portal-tab-btn.active {
+  background: var(--surface-4);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.portal-tab-icon {
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+.portal-tab-title {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.portal-tab-desc {
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.portal-tab-btn.active .portal-tab-desc {
+  color: var(--cyan);
+}
+
+/* ── PRIVACY BANNER ──────────────────────────────────────────── */
+.privacy-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  margin-bottom: 20px;
+  font-size: 11px;
+  line-height: 1.5;
+  border: 1px solid transparent;
+}
+.privacy-banner.student {
+  background: var(--cyan-dim);
+  border-color: rgba(0, 200, 150, 0.25);
+  color: var(--text-primary);
+}
+.privacy-banner.faculty {
+  background: var(--blue-dim);
+  border-color: rgba(59, 130, 246, 0.25);
+  color: var(--text-primary);
+}
+.privacy-banner.admin {
+  background: var(--orange-dim);
+  border-color: rgba(245, 158, 11, 0.25);
+  color: var(--text-primary);
+}
+.privacy-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ── LOGIN FORM INPUTS ───────────────────────────────────────── */
+.login-form .form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.input-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.input-icon {
+  position: absolute;
+  left: 12px;
+  font-size: 14px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.input-with-icon .form-input {
+  padding-left: 36px;
+  padding-right: 38px;
+}
+
+.btn-toggle-pwd {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 14px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+}
+.btn-toggle-pwd:hover {
+  color: var(--text-primary);
+}
+
+.btn-block {
+  width: 100%;
+}
+
+/* ── QUICK DEMO FILL CHIPS ───────────────────────────────────── */
+.quick-fill-section {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.quick-fill-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+.quick-fill-hint {
+  font-size: 10px;
+  color: var(--cyan);
+}
+
+.quick-fill-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quick-fill-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 6px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+.quick-fill-chip:hover {
+  background: var(--surface-3);
+  border-color: var(--cyan);
+  transform: translateY(-1px);
+}
+.chip-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.chip-cred {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+/* ── CREDENTIAL REFERENCE ────────────────────────────────────── */
+.login-footer-info {
+  margin-top: 18px;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border);
+}
+.footer-info-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  letter-spacing: 0.05em;
+}
+.footer-info-grid {
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.footer-info-grid code {
+  font-family: var(--font-mono);
+  background: var(--surface-4);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--cyan);
+}
+
+/* ── TOPBAR USER PILL & LOGOUT ───────────────────────────────── */
+.topbar-logged-out-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.user-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 4px 10px 4px 8px;
+  border-radius: 20px;
+}
+
+.user-avatar {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.user-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.user-role-badge {
+  font-size: 9px;
+  padding: 1px 6px;
+}
+
+.btn-logout {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  margin-left: 4px;
+  transition: all 0.15s ease;
+}
+.btn-logout:hover {
+  color: var(--red);
+  background: var(--red-dim);
+}
+
+/* ── STUDENT SESSION BADGE & CALLOUTS ────────────────────────── */
+.student-session-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  border-radius: var(--radius-md);
+}
+.session-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+}
+.session-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.session-id {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.student-privacy-callout {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(0, 200, 150, 0.05);
+  border: 1px solid rgba(0, 200, 150, 0.2);
+  border-radius: var(--radius-md);
+  padding: 12px 18px;
+  margin-bottom: 20px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.student-privacy-callout strong {
+  color: var(--cyan);
+}
+.shield-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+/* ── ACCESS DENIED BOX ───────────────────────────────────────── */
+.access-denied-box {
+  text-align: center;
+  padding: 48px 24px;
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.03);
+}
+.access-denied-icon {
+  font-size: 42px;
+  margin-bottom: 16px;
+}
+.access-denied-box h2 {
+  font-size: 20px;
+  color: var(--red);
+  margin-bottom: 10px;
+}
+.access-denied-box p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  max-width: 520px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* ── HIGH PRIORITY FACILITY BADGE ────────────────────────────── */
+.badge-priority-facility {
+  background: rgba(245, 158, 11, 0.15) !important;
+  color: #fbbf24 !important;
+  border: 1px solid rgba(245, 158, 11, 0.4) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.15);
+}
+

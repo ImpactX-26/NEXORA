@@ -56,6 +56,7 @@ def init_db():
     CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL DEFAULT 'password123',
         name TEXT NOT NULL,
         role TEXT NOT NULL,
         department_id TEXT,
@@ -65,6 +66,12 @@ def init_db():
         FOREIGN KEY (staff_id) REFERENCES staff (id)
     )
     ''')
+
+    # Auto-migration for password column in existing users table
+    cursor.execute("PRAGMA table_info(users);")
+    cols = [col['name'] for col in cursor.fetchall()]
+    if 'password' not in cols:
+        cursor.execute("ALTER TABLE users ADD COLUMN password TEXT NOT NULL DEFAULT 'password123';")
 
     # 4. Tickets table
     cursor.execute('''

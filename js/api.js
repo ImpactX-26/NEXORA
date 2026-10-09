@@ -30,6 +30,19 @@ async function apiGet(endpoint) {
   return res.json();
 }
 
+// ── Authentication Endpoints ────────────────────────────────
+export async function loginApi(username, password, portal = '') {
+  return apiPost('/api/auth/login', {
+    username,
+    password,
+    portal,
+  });
+}
+
+export async function fetchDemoAccounts() {
+  return apiGet('/api/auth/demo-accounts');
+}
+
 // ── System & Health Endpoints ───────────────────────────────
 export async function checkHealth() {
   return apiGet('/api/health');
@@ -57,12 +70,12 @@ export async function fetchTicketById(ticketId) {
   return apiGet(`/api/tickets/${encodeURIComponent(ticketId)}`);
 }
 
-export async function submitComplaintTicket({ complaint_text, student_name, location }) {
+export async function submitComplaintTicket({ complaint_text, student_name, location, student_id }) {
   return apiPost('/api/tickets', {
     complaint_text,
     student_name,
     location,
-    student_id: 'STU-DEMO',
+    student_id: student_id || 'USR_STU_01',
   });
 }
 
